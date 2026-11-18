@@ -64,7 +64,7 @@ So entstehen die Bilder neu:
   "version": "1.0.0",
   "datum": "1. März 2027",
   "groesse": "85 MB",
-  "link": "https://github.com/imagichron/webseite/releases/download/v1.0.0/Imagichron-Setup-1.0.0.exe",
+  "link": "https://github.com/imagicosmos/imagichron-webseite/releases/download/v1.0.0/Imagichron-Setup-1.0.0.exe",
   "sha256": "…"
 }
 ```
@@ -81,7 +81,7 @@ Die Installationsdatei muss **signiert** sein, sonst warnt oder blockiert Window
    - `A`-Einträge für `imagichron.de`: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
    - `AAAA`-Einträge: `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`
    - `CNAME` für `www`: `imagichron.github.io`
-4. Empfohlen: Domain in der Organisation bestätigen (**Organisation → Settings → Pages → Add a domain**, TXT-Eintrag im DNS). So kann niemand sonst imagichron.de auf GitHub verwenden.
+4. Domain in der Organisation bestätigen (**Organisation → Settings → Pages → Add a domain**, TXT-Eintrag im DNS). So kann niemand sonst imagichron.de auf GitHub verwenden. **Erledigt:** imagichron.de ist für die Organisation `imagicosmos` bestätigt. Deshalb liegt dieses Repo seit 18.11.2026 dort (`imagicosmos/imagichron-webseite`, vorher `imagichron/webseite`): Eine bestätigte Domain dürfen nur Repos dieser Organisation benutzen.
 5. Sobald GitHub das Zertifikat erstellt hat: **„Enforce HTTPS“** anhaken.
 
 ## Commits
