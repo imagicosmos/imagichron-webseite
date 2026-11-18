@@ -1,12 +1,19 @@
-/* Logo-Animation „Zauberstab“: Das I wird zum Zauberstab, kreist über „magic“, tippt auf das g –
-   „magic“ färbt sich Bernstein, die Farbe wandert zu „chron“ und bleibt dort.
+/* Baustein „zauberstab“ – Logo-Animation der Webseiten: Das I wird zum Zauberstab, kreist über „magic“, tippt auf das g –
+   „magic“ färbt sich, die Farbe wandert zum farbigen Teil des Namens (chron, coll, clique, cruise, cosmos) und bleibt dort.
    Spielt einmal beim Laden und erneut, wenn man mit der Maus auf das Logo zeigt.
-   Bei „Bewegung reduzieren“ (Systemeinstellung) bleibt das Logo still. Quelle: imagicosmos/docs/entwuerfe/schriftzug-animation.html */
-(() => {
+   Bei „Bewegung reduzieren“ (Systemeinstellung) bleibt das Logo still.
+
+   Einstellen muss man fast nichts: Das Wort steht im Logo (.kopf .logo .logo-wort mit dem farbigen Teil als <span> darin),
+   die Farben kommen aus dem fertigen Schriftzug in style.css (auch im Dunkelmodus). Nur die beiden Leuchtfarben
+   stehen beim Einbinden:  <script src="bausteine/zauberstab.js" data-stern="#06b6d4" data-band="#67e8f9" defer></script>
+
+   Zusammengeführt am 18.11.2026 aus den fünf gleichen Fassungen der Webseiten (Imagichron, Imagicoll, Imagiclique,
+   Imagicruise, Imagicosmos; Grundlage: Imagicosmos mit Farbverlauf über mehrere Farben). Entwurf:
+   imagicosmos/docs/entwuerfe/schriftzug-animation.html. Unter Node (Tests) gehen nur die Rechenteile. */
+(function (wurzel) {
   "use strict";
-  const WORTE = { imagichron: { text: "Imagichron", farben: ["#b4380a", "#e8590c"], stern: "#f59e0b", band: "#fbbf24", teil: [5, 9] } };
-  let TINTE = "#1f2430";
-    const GROESSE = 150, GRUND = 236, RAND = 40;
+  var VERSION = "1.0.0";
+  const GROESSE = 150, GRUND = 236, RAND = 40, ENDE = 6.0;
   const klemm = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
   const weich = x => { x = klemm(x); return x * x * (3 - 2 * x); };
   const ausrollen = x => { x = klemm(x); return 1 - Math.pow(1 - x, 3); };
@@ -14,9 +21,30 @@
   const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
   const farbe = (a, b, t) => { const x = hex(a), y = hex(b); return `rgb(${x.map((v, i) => Math.round(misch(v, y[i], t))).join(",")})`; };
   const phase = (t, von, bis) => klemm((t - von) / (bis - von));
+  const zuHex = (r, g, b) => "#" + [r, g, b].map(v => Math.round(+v).toString(16).padStart(2, "0")).join("");
 
-  function zeichne(ctx, wort, t) {
-    const w = WORTE[wort], text = w.text, letzter = text.length - 1, [c, ende] = w.teil;
+  // Farben aus einem CSS-Wert lesen („linear-gradient(90deg, rgb(14, 116, 144), rgb(8, 145, 178))“, „rgb(…)“, „#0e7490“)
+  function farbenLesen(css) {
+    const aus = [], s = String(css || "");
+    const re = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)[^)]*\)|#([0-9a-f]{6})\b/gi;
+    let m;
+    while ((m = re.exec(s))) aus.push(m[4] ? "#" + m[4].toLowerCase() : zuHex(m[1], m[2], m[3]));
+    return aus;
+  }
+  // Stelle eines Buchstabens im Farbverlauf (0…1): „magi“ (Buchstaben 1 bis c-1) und der farbige Teil (c bis ende)
+  // durchlaufen je den ganzen Verlauf – wie der fertige Schriftzug in style.css
+  function stelle(i, c, ende) { return klemm(i < c ? (i - 1) / Math.max(1, c - 2) : (i - c) / Math.max(1, ende - c)); }
+  // Farbe an einer Stelle des Verlaufs (beliebig viele Farben)
+  function verlauf(farben, p) {
+    if (farben.length < 2) return farbe(farben[0], farben[0], 0);
+    const lage = klemm(p) * (farben.length - 1), stufe = Math.min(Math.floor(lage), farben.length - 2);
+    return farbe(farben[stufe], farben[stufe + 1], lage - stufe);
+  }
+
+  // Ein Bild der Animation zum Zeitpunkt t (Sekunden).
+  // a = { text: "Imagicoll", teil: [5, 8] (erster und letzter farbiger Buchstabe), farben: ["#…", "#…"], stern, band, tinte }
+  function zeichne(ctx, a, t) {
+    const w = a, text = w.text, letzter = text.length - 1, [c, ende] = w.teil, TINTE = w.tinte || "#1f2430";
     ctx.font = `700 ${GROESSE}px "Josefin Sans"`; ctx.textBaseline = "alphabetic";
     const x0 = RAND;
     const xs = [...text].map((_, i) => x0 + ctx.measureText(text.slice(0, i)).width);
@@ -24,7 +52,7 @@
     const kappe = GRUND - GROESSE * .72, mitte = i => xs[i] + bs[i] / 2;
 
     /* Ablauf (Sekunden) */
-    const tStab = phase(t, .35, .95), tHoch = phase(t, .95, 1.35), tTipp = phase(t, 1.35, 1.6), TIPP = 2.65;
+    const tStab = phase(t, .35, .95), TIPP = 2.65;
     const tWandern = phase(t, 3.4, 4.6), tZurueck = phase(t, 4.65, 5.35), tI = phase(t, 5.3, 5.7), tReset = phase(t, 7.6, 8.1);
 
     /* Farbanteil je Buchstabe */
@@ -55,7 +83,7 @@
       }
       if (alpha <= 0) continue;
       ctx.save(); ctx.globalAlpha = alpha;
-      const marke = farbe(w.farben[0], w.farben[1], klemm((i - 1) / (letzter - 1)));
+      const marke = verlauf(w.farben, stelle(i, c, ende));
       ctx.fillStyle = anteil[i] > 0 ? farbe(TINTE, "#" + marke.match(/\d+/g).map(v => (+v).toString(16).padStart(2, "0")).join(""), anteil[i]) : TINTE;
       if (huepf[i] > 0) { ctx.shadowColor = w.band; ctx.shadowBlur = 26 * huepf[i]; }
       ctx.textAlign = "center"; ctx.fillText(text[i], mitte(i), GRUND);
@@ -74,7 +102,6 @@
 
     /* Zauberstab-Haltung zu jeder Zeit: Griff (x, y), Winkel w (0 = senkrecht nach oben), Länge L */
     const L0 = GROESSE * .72, L1 = 150, sanft = x => { x = klemm(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
-    const zw = (a, b, p) => ({ x: misch(a.x, b.x, p), y: misch(a.y, b.y, p), w: misch(a.w, b.w, p), L: misch(a.L, b.L, p) });
     const ausSpitze = (px, py, w, L) => ({ x: px - Math.sin(w) * L, y: py + Math.cos(w) * L, w, L });
     /* Gehaltener Stab: Der Griff bleibt ruhig in der Hand, nur die Spitze kreist (Drehen aus dem Handgelenk).
        Kreis im Raum → in der Ansicht schwingt der Winkel, und der Stab wirkt vorn/hinten etwas kürzer (Verkürzung). */
@@ -112,7 +139,7 @@
       }
     }
 
-    /* Zauberstab zeichnen: gerader dunkler Stab mit farbiger Spitze (wie Fassung 1), Leuchten an der Spitze */
+    /* Zauberstab zeichnen: gerader dunkler Stab mit farbiger Spitze, Leuchten an der Spitze */
     const stabSichtbar = weich(tStab) * (1 - weich(tI));
     if (stabSichtbar > 0) {
       const g = haltung(t), stab = 17;
@@ -153,41 +180,66 @@
     }
   }
 
-  const ENDE = 6.0;                                   // danach steht der fertige Schriftzug (Imagi + chron in Bernstein)
-  const logo = document.querySelector(".kopf .logo"), wortEl = logo && logo.querySelector(".logo-wort");
-  if (!wortEl || !document.createElement("canvas").getContext || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  wortEl.classList.add("zauber-vorher");             // „chron“ zunächst in Schriftfarbe – die Farbe kommt erst durch den Zauber
-  const alsHex = f => { const m = f.match(/\d+(\.\d+)?/g) || [31, 36, 48]; return "#" + m.slice(0, 3).map(v => Math.round(+v).toString(16).padStart(2, "0")).join(""); };
-  let laeuft = false;
-
-  function abspielen() {
-    if (laeuft) return; laeuft = true;
-    const fs = parseFloat(getComputedStyle(wortEl).fontSize), s = fs / GROESSE, dpr = Math.min(window.devicePixelRatio || 1, 3);
-    const mess = document.createElement("canvas").getContext("2d");
-    mess.font = `700 ${GROESSE}px "Josefin Sans"`;
-    const breite = mess.measureText("Imagichron").width, W = breite + 2 * RAND, H = 300;
-    const marke = document.createElement("span"); marke.style.cssText = "display:inline-block;width:0;height:0";
-    wortEl.prepend(marke);
-    const grundlinie = marke.getBoundingClientRect().top - wortEl.getBoundingClientRect().top; marke.remove();
-    const cv = document.createElement("canvas");
-    cv.width = Math.ceil(W * s * dpr); cv.height = Math.ceil(H * s * dpr);
-    cv.setAttribute("aria-hidden", "true"); cv.className = "zauber-flaeche";
-    cv.style.cssText = `width:${W * s}px;height:${H * s}px;left:${-RAND * s}px;top:${grundlinie - GRUND * s}px`;
-    wortEl.append(cv); wortEl.classList.add("zaubert");
-    TINTE = alsHex(getComputedStyle(logo).color);
-    const ctx = cv.getContext("2d"), t0 = performance.now();
-    const bild = jetzt => {
-      const t = (jetzt - t0) / 1000;
-      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
-      zeichne(ctx, "imagichron", Math.min(t, ENDE));
-      if (t < ENDE) return requestAnimationFrame(bild);
-      wortEl.classList.remove("zaubert", "zauber-vorher"); cv.remove(); laeuft = false;
+  // ---------- Auf der Webseite: Logo finden, Farben lesen, abspielen ----------
+  function starten(skript) {
+    const doc = wurzel.document;
+    const logo = doc.querySelector(".kopf .logo"), wortEl = logo && logo.querySelector(".logo-wort");
+    const teilEl = wortEl && wortEl.querySelector("span");
+    if (!teilEl || !doc.createElement("canvas").getContext || wurzel.matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
+    const daten = (skript && skript.dataset) || {};
+    const text = wortEl.textContent.trim(), c = text.length - teilEl.textContent.trim().length;
+    // Farben des fertigen Schriftzugs (style.css) – kurz ohne die Zauber-Klassen lesen, damit der Verlauf sichtbar ist
+    const farbenJetzt = () => {
+      const vorher = wortEl.className;
+      wortEl.classList.remove("zauber-vorher", "zaubert");
+      let f = farbenLesen(wurzel.getComputedStyle(teilEl).backgroundImage);
+      if (!f.length) f = farbenLesen(wurzel.getComputedStyle(teilEl).color);
+      wortEl.className = vorher;
+      return f.length ? f : ["#1f2430"];
     };
-    requestAnimationFrame(bild);
+    const ersteFarben = farbenJetzt();
+    const angaben = { text, teil: [c, text.length - 1], farben: ersteFarben,
+                      stern: daten.stern || ersteFarben[ersteFarben.length - 1], band: daten.band || ersteFarben[ersteFarben.length - 1] };
+    wortEl.classList.add("zauber-vorher");             // der farbige Teil zunächst in Schriftfarbe – die Farbe kommt erst durch den Zauber
+    const alsHex = f => { const m = f.match(/\d+(\.\d+)?/g) || [31, 36, 48]; return zuHex(m[0], m[1], m[2]); };
+    let laeuft = false;
+
+    function abspielen() {
+      if (laeuft) return; laeuft = true;
+      angaben.farben = farbenJetzt();                  // Hell oder Dunkel kann inzwischen umgeschaltet sein
+      const fs = parseFloat(wurzel.getComputedStyle(wortEl).fontSize), s = fs / GROESSE, dpr = Math.min(wurzel.devicePixelRatio || 1, 3);
+      const mess = doc.createElement("canvas").getContext("2d");
+      mess.font = `700 ${GROESSE}px "Josefin Sans"`;
+      const breite = mess.measureText(text).width, W = breite + 2 * RAND, H = 300;
+      const marke = doc.createElement("span"); marke.style.cssText = "display:inline-block;width:0;height:0";
+      wortEl.prepend(marke);
+      const grundlinie = marke.getBoundingClientRect().top - wortEl.getBoundingClientRect().top; marke.remove();
+      const cv = doc.createElement("canvas");
+      cv.width = Math.ceil(W * s * dpr); cv.height = Math.ceil(H * s * dpr);
+      cv.setAttribute("aria-hidden", "true"); cv.className = "zauber-flaeche";
+      cv.style.cssText = `width:${W * s}px;height:${H * s}px;left:${-RAND * s}px;top:${grundlinie - GRUND * s}px`;
+      wortEl.append(cv); wortEl.classList.add("zaubert");
+      angaben.tinte = alsHex(wurzel.getComputedStyle(logo).color);
+      const ctx = cv.getContext("2d"), t0 = wurzel.performance.now();
+      const bild = jetzt => {
+        const t = (jetzt - t0) / 1000;
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
+        zeichne(ctx, angaben, Math.min(t, ENDE));
+        if (t < ENDE) return wurzel.requestAnimationFrame(bild);
+        wortEl.classList.remove("zaubert", "zauber-vorher"); cv.remove(); laeuft = false;
+      };
+      wurzel.requestAnimationFrame(bild);
+    }
+
+    doc.fonts.load(`700 ${GROESSE}px "Josefin Sans"`).then(() => {
+      setTimeout(abspielen, 500);
+      logo.addEventListener("mouseenter", () => { if (!laeuft) { wortEl.classList.add("zauber-vorher"); abspielen(); } });
+    }).catch(() => wortEl.classList.remove("zauber-vorher"));
+    return angaben;
   }
 
-  document.fonts.load(`700 ${GROESSE}px "Josefin Sans"`).then(() => {
-    setTimeout(abspielen, 500);
-    logo.addEventListener("mouseenter", () => { if (!laeuft) { wortEl.classList.add("zauber-vorher"); abspielen(); } });
-  }).catch(() => wortEl.classList.remove("zauber-vorher"));
-})();
+  const api = { VERSION, ENDE, farbenLesen, stelle, verlauf, zeichne, starten };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  wurzel.ImagicosmosZauberstab = api;
+  if (wurzel.document && wurzel.document.currentScript) api.angaben = starten(wurzel.document.currentScript);
+})(typeof globalThis !== "undefined" ? globalThis : this);
