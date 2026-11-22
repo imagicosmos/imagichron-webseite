@@ -12,7 +12,9 @@ const path = require("path");
 const crypto = require("crypto");
 
 function pruefsumme(datei) {
-  // Zeilenenden vereinheitlichen: Git kann unter Windows LF in CRLF umwandeln
+  // Schriften und Bilder als Bytes (seit 18.11.2026, Baustein design bringt eine Schrift mit)
+  if (/\.(woff2?|ttf|otf|png|jpe?g|gif|ico|webp)$/i.test(datei)) return crypto.createHash("sha256").update(fs.readFileSync(datei)).digest("hex");
+  // Text: Zeilenenden vereinheitlichen, Git kann unter Windows LF in CRLF umwandeln
   const text = fs.readFileSync(datei, "utf8").replace(/\r\n/g, "\n");
   return crypto.createHash("sha256").update(text, "utf8").digest("hex");
 }
